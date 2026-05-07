@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户管理系统</title>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        body { background: #f5f5f5; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); overflow: hidden; }
+        .header { display: flex; justify-content: space-between; align-items: center; padding: 20px; border-bottom: 1px solid #e8e8e8; }
+        .header h1 { font-size: 20px; color: #333; }
+        .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+        .btn { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; transition: all 0.2s; }
+        .btn-primary { background: #1890ff; color: #fff; }
+        .btn-primary:hover { background: #40a9ff; }
+        .btn-success { background: #52c41a; color: #fff; }
+        .btn-success:hover { background: #73d13d; }
+        .btn-danger { background: #ff4d4f; color: #fff; }
+        .btn-danger:hover { background: #ff7875; }
+        .btn-default { background: #fff; color: #666; border: 1px solid #d9d9d9; }
+        .btn-default:hover { background: #f5f5f5; }
+        .table-wrapper { padding: 20px; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; min-width: 800px; }
+        th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid #e8e8e8; }
+        th { background: #fafafa; font-weight: 600; color: #666; }
+        tr:hover { background: #fafafa; }
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 1000; }
+        .modal-overlay.show { display: flex; }
+        .modal { background: #fff; border-radius: 8px; width: 90%; max-width: 500px; overflow: hidden; }
+        .modal.large { max-width: 800px; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid #e8e8e8; }
+        .modal-header h2 { font-size: 16px; }
+        .modal-close { background: none; border: none; font-size: 20px; cursor: pointer; color: #999; }
+        .modal-body { padding: 20px; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; margin-bottom: 6px; }
+        .form-control { width: 100%; padding: 8px 12px; border: 1px solid #d9d9d9; border-radius: 4px; }
+        .form-control:focus { outline: none; border-color: #1890ff; }
+        .modal-footer { padding: 16px 20px; border-top: 1px solid #e8e8e8; display: flex; justify-content: flex-end; gap: 10px; }
+        .pagination { display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 20px; }
+        .pagination button { padding: 6px 12px; border: 1px solid #d9d9d9; background: #fff; border-radius: 4px; cursor: pointer; }
+        .pagination button:disabled { opacity: 0.5; }
+        .message { position: fixed; top: 20px; right: 20px; padding: 12px 24px; border-radius: 4px; color: #fff; font-size: 14px; z-index: 2000; display: none; }
+        .message.show { display: block; animation: slideIn 0.3s ease; }
+        .message.success { background: #52c41a; }
+        .message.error { background: #ff4d4f; }
+        .message.warning { background: #faad14; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .empty-state { text-align: center; padding: 40px; color: #999; }
+        .file-input { display: none; }
+        .file-label { display: inline-block; padding: 8px 16px; border: 1px dashed #d9d9d9; border-radius: 4px; cursor: pointer; color: #666; }
+        .file-label:hover { border-color: #1890ff; color: #1890ff; }
+        .import-preview { max-height: 300px; overflow-y: auto; margin-top: 10px; }
+        .import-preview table { min-width: 100%; font-size: 12px; }
+        .import-preview th, .import-preview td { padding: 8px; }
+        .error-list { max-height: 150px; overflow-y: auto; color: #ff4d4f; font-size: 12px; margin-top: 10px; }
+        .error-list ul { padding-left: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>用户管理系统</h1>
+            <div class="actions">
+                <button class="btn btn-default" onclick="refreshUsers()">刷新</button>
+                <button class="btn btn-default" onclick="downloadTemplate()">下载模板</button>
+                <button class="btn btn-success" onclick="exportUsers()">导出 Excel</button>
+                <button class="btn btn-default" onclick="showImportModal()">导入 Excel</button>
+                <button class="btn btn-primary" onclick="showAddModal()">+ 添加用户</button>
+                <button class="btn btn-danger" onclick="batchDeleteUsers()" id="batchDeleteBtn" style="display:none;">批量删除 (<span id="selectedCount">0</span>)</button>
+            </div>
+        </div>
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width:40px;"><input type="checkbox" id="selectAll" onclick="toggleSelectAll()"></th>
+                        <th>ID</th>
+                        <th>姓名</th>
+                        <th>邮箱</th>
+                        <th>年龄</th>
+                        <th>创建时间</th>
+                        <th style="width:120px;">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="userTableBody"></tbody>
+            </table>
+            <div class="pagination" id="pagination"></div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="userModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="modalTitle">添加用户</h2>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="userForm">
+                    <input type="hidden" id="userId">
+                    <div class="form-group">
+                        <label>姓名 *</label>
+                        <input type="text" class="form-control" id="userName" required>
+                    </div>
+                    <div class="form-group">
+                        <label>邮箱 *</label>
+                        <input type="email" class="form-control" id="userEmail" required>
+                    </div>
+                    <div class="form-group">
+                        <label>年龄</label>
+                        <input type="number" class="form-control" id="userAge" min="0" max="150">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-default" onclick="closeModal()">取消</button>
+                <button class="btn btn-primary" onclick="saveUser()">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="importModal">
+        <div class="modal large">
+            <div class="modal-header">
+                <h2>导入用户</h2>
+                <button class="modal-close" onclick="closeImportModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <label class="file-label" for="importFile">点击上传 Excel 文件</label>
+                <input type="file" id="importFile" class="file-input" accept=".xlsx,.xls" onchange="handleFileChange()">
+                <div id="fileInfo" style="margin-top:10px;color:#666;"></div>
+                
+                <div class="import-preview" id="importPreview" style="display:none;">
+                    <p style="margin-bottom:10px;font-weight:bold;">预览数据：</p>
+                    <table>
+                        <thead>
+                            <tr><th>姓名</th><th>邮箱</th><th>年龄</th></tr>
+                        </thead>
+                        <tbody id="previewBody"></tbody>
+                    </table>
+                </div>
+                
+                <div class="error-list" id="errorList" style="display:none;">
+                    <p style="margin-bottom:10px;font-weight:bold;">数据校验错误：</p>
+                    <ul id="errors"></ul>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-default" onclick="downloadTemplate()">下载模板</button>
+                <button class="btn btn-default" onclick="closeImportModal()">取消</button>
+                <button class="btn btn-primary" onclick="importUsers()">确认导入</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="message" id="message"></div>
+
+    <script>
+        let users = [];
+        let currentPage = 1;
+        let pageSize = 10;
+        let selectedIds = [];
+        let importData = [];
+        let importErrors = [];
+
+        function loadMockData() {
+            const mockUsers = [
+                { id: 1, name: '张三', email: 'zhangsan@example.com', age: 25, created_at: '2024-01-15 10:30:00' },
+                { id: 2, name: '李四', email: 'lisi@example.com', age: 30, created_at: '2024-01-16 14:20:00' },
+                { id: 3, name: '王五', email: 'wangwu@example.com', age: 28, created_at: '2024-01-17 09:15:00' },
+                { id: 4, name: '赵六', email: 'zhaoliu@example.com', age: 35, created_at: '2024-01-18 11:45:00' },
+                { id: 5, name: '钱七', email: 'qianqi@example.com', age: 22, created_at: '2024-01-19 16:00:00' },
+                { id: 6, name: '孙八', email: 'sunba@example.com', age: 40, created_at: '2024-01-20 08:30:00' },
+                { id: 7, name: '周九', email: 'zhoujiu@example.com', age: 27, created_at: '2024-01-21 13:10:00' },
+                { id: 8, name: '吴十', email: 'wushi@example.com', age: 33, created_at: '2024-01-22 15:50:00' },
+            ];
+            users = JSON.parse(localStorage.getItem('users') || JSON.stringify(mockUsers));
+        }
+
+        function saveUsers() {
+            localStorage.setItem('users', JSON.stringify(users));
+        }
+
+        function fetchUsers(page = 1) {
+            currentPage = page;
+            const start = (page - 1) * pageSize;
+            const end = start + pageSize;
+            const paginatedUsers = users.slice(start, end);
+            renderUsers(paginatedUsers);
+            renderPagination();
+        }
+
+        function renderUsers(data) {
+            const tbody = document.getElementById('userTableBody');
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-state">暂无用户数据</td></tr>';
+                return;
+            }
+            tbody.innerHTML = data.map(user => `
+                <tr>
+                    <td><input type="checkbox" data-id="${user.id}" ${selectedIds.includes(user.id) ? 'checked' : ''} onclick="toggleSelect(${user.id})"></td>
+                    <td>${user.id}</td>
+                    <td>${user.name}</td>
+                    <td>${user.email}</td>
+                    <td>${user.age || '-'}</td>
+                    <td>${user.created_at}</td>
+                    <td>
+                        <button class="btn btn-primary btn-sm" style="padding:4px 10px;font-size:12px;" onclick="showEditModal(${user.id})">编辑</button>
+                        <button class="btn btn-danger btn-sm" style="padding:4px 10px;font-size:12px;margin-left:5px;" onclick="deleteUser(${user.id})">删除</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function renderPagination() {
+            const pagination = document.getElementById('pagination');
+            const pages = Math.ceil(users.length / pageSize);
+            if (pages <= 1) {
+                pagination.innerHTML = '';
+                return;
+            }
+            pagination.innerHTML = `
+                <button onclick="fetchUsers(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>上一页</button>
+                <span>${currentPage} / ${pages}</span>
+                <button onclick="fetchUsers(${currentPage + 1})" ${currentPage === pages ? 'disabled' : ''}>下一页</button>
+            `;
+        }
+
+        function showMessage(text, type = 'success') {
+            const message = document.getElementById('message');
+            message.textContent = text;
+            message.className = `message ${type} show`;
+            setTimeout(() => message.classList.remove('show'), 3000);
+        }
+
+        function showAddModal() {
+            document.getElementById('modalTitle').textContent = '添加用户';
+            document.getElementById('userId').value = '';
+            document.getElementById('userName').value = '';
+            document.getElementById('userEmail').value = '';
+            document.getElementById('userAge').value = '';
+            document.getElementById('userModal').classList.add('show');
+        }
+
+        function showEditModal(id) {
+            const user = users.find(u => u.id === id);
+            if (user) {
+                document.getElementById('modalTitle').textContent = '编辑用户';
+                document.getElementById('userId').value = user.id;
+                document.getElementById('userName').value = user.name;
+                document.getElementById('userEmail').value = user.email;
+                document.getElementById('userAge').value = user.age || '';
+                document.getElementById('userModal').classList.add('show');
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('userModal').classList.remove('show');
+        }
+
+        function saveUser() {
+            const id = document.getElementById('userId').value;
+            const data = {
+                name: document.getElementById('userName').value,
+                email: document.getElementById('userEmail').value,
+                age: document.getElementById('userAge').value || null
+            };
+
+            if (!data.name || !data.email) {
+                showMessage('姓名和邮箱不能为空', 'error');
+                return;
+            }
+
+            if (users.some(u => u.email === data.email && u.id != id)) {
+                showMessage('邮箱已存在', 'error');
+                return;
+            }
+
+            if (id) {
+                const index = users.findIndex(u => u.id === parseInt(id));
+                if (index > -1) {
+                    users[index] = { ...users[index], ...data, updated_at: new Date().toLocaleString() };
+                    showMessage('更新成功');
+                }
+            } else {
+                const newId = users.length > 0 ? Math.max(...users.map(u => u.id)) + 1 : 1;
+                users.push({ ...data, id: newId, created_at: new Date().toLocaleString() });
+                showMessage('添加成功');
+            }
+
+            saveUsers();
+            closeModal();
+            fetchUsers(currentPage);
+        }
+
+        function deleteUser(id) {
+            if (!confirm('确定删除该用户？')) return;
+            users = users.filter(u => u.id !== id);
+            saveUsers();
+            showMessage('删除成功');
+            fetchUsers(currentPage > Math.ceil(users.length / pageSize) && users.length > 0 ? currentPage - 1 : 1);
+            updateBatchButton();
+        }
+
+        function toggleSelect(id) {
+            const index = selectedIds.indexOf(id);
+            if (index > -1) {
+                selectedIds.splice(index, 1);
+            } else {
+                selectedIds.push(id);
+            }
+            updateBatchButton();
+        }
+
+        function toggleSelectAll() {
+            const checkbox = document.getElementById('selectAll');
+            if (checkbox.checked) {
+                const start = (currentPage - 1) * pageSize;
+                const end = start + pageSize;
+                selectedIds = [...new Set([...selectedIds, ...users.slice(start, end).map(u => u.id)])];
+            } else {
+                const start = (currentPage - 1) * pageSize;
+                const end = start + pageSize;
+                selectedIds = selectedIds.filter(id => !users.slice(start, end).some(u => u.id === id));
+            }
+            updateBatchButton();
+            document.querySelectorAll('.table-wrapper input[type="checkbox"]').forEach(cb => {
+                const id = parseInt(cb.dataset.id);
+                if (id) cb.checked = selectedIds.includes(id);
+            });
+        }
+
+        function updateBatchButton() {
+            const btn = document.getElementById('batchDeleteBtn');
+            const count = document.getElementById('selectedCount');
+            if (selectedIds.length > 0) {
+                btn.style.display = 'inline-block';
+                count.textContent = selectedIds.length;
+            } else {
+                btn.style.display = 'none';
+            }
+        }
+
+        function batchDeleteUsers() {
+            if (!confirm(`确定删除选中的 ${selectedIds.length} 个用户？`)) return;
+            users = users.filter(u => !selectedIds.includes(u.id));
+            selectedIds = [];
+            saveUsers();
+            showMessage(`成功删除 ${selectedIds.length} 条记录`);
+            document.getElementById('selectAll').checked = false;
+            updateBatchButton();
+            fetchUsers(1);
+        }
+
+        function exportUsers() {
+            const data = users.map(u => ({
+                'ID': u.id,
+                '姓名': u.name,
+                '邮箱': u.email,
+                '年龄': u.age || '',
+                '创建时间': u.created_at
+            }));
+            
+            const ws = XLSX.utils.json_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, '用户列表');
+            
+            const fileName = `用户列表_${new Date().toLocaleDateString()}.xlsx`;
+            XLSX.writeFile(wb, fileName);
+            showMessage('导出成功');
+        }
+
+        function downloadTemplate() {
+            const template = [
+                { '姓名': '张三', '邮箱': 'zhangsan@example.com', '年龄': 25 },
+                { '姓名': '李四', '邮箱': 'lisi@example.com', '年龄': 30 }
+            ];
+            
+            const ws = XLSX.utils.json_to_sheet(template);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, '导入模板');
+            
+            XLSX.writeFile(wb, '用户导入模板.xlsx');
+            showMessage('模板下载成功');
+        }
+
+        function showImportModal() {
+            document.getElementById('importFile').value = '';
+            document.getElementById('fileInfo').textContent = '';
+            document.getElementById('importPreview').style.display = 'none';
+            document.getElementById('errorList').style.display = 'none';
+            document.getElementById('previewBody').innerHTML = '';
+            document.getElementById('errors').innerHTML = '';
+            importData = [];
+            importErrors = [];
+            document.getElementById('importModal').classList.add('show');
+        }
+
+        function closeImportModal() {
+            document.getElementById('importModal').classList.remove('show');
+        }
+
+        function handleFileChange() {
+            const file = document.getElementById('importFile').files[0];
+            if (!file) return;
+            
+            document.getElementById('fileInfo').textContent = `已选择文件: ${file.name}`;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonData = XLSX.utils.sheet_to_json(sheet);
+                    
+                    validateImportData(jsonData);
+                } catch (error) {
+                    showMessage('文件解析失败', 'error');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function validateImportData(data) {
+            importData = [];
+            importErrors = [];
+            
+            data.forEach((row, idx) => {
+                const rowNum = idx + 2;
+                const name = row['姓名'];
+                const email = row['邮箱'];
+                const age = row['年龄'];
+                
+                if (!name || name.trim() === '') {
+                    importErrors.push(`第${rowNum}行：姓名为空`);
+                    return;
+                }
+                
+                if (!email || !/^[^\s@]+@([^\s@.,]+\.)+[^\s@.,]{2,}$/.test(email)) {
+                    importErrors.push(`第${rowNum}行：邮箱格式错误 (${email || '空'})`);
+                    return;
+                }
+                
+                let ageNum = null;
+                if (age !== undefined && age !== '') {
+                    ageNum = Number(age);
+                    if (isNaN(ageNum) || ageNum < 0 || ageNum > 150) {
+                        importErrors.push(`第${rowNum}行：年龄必须为 0-150 的数字`);
+                        return;
+                    }
+                }
+                
+                importData.push({
+                    name: name.trim(),
+                    email: email.trim(),
+                    age: ageNum
+                });
+            });
+            
+            if (importErrors.length > 0) {
+                document.getElementById('errors').innerHTML = importErrors.map(e => `<li>${e}</li>`).join('');
+                document.getElementById('errorList').style.display = 'block';
+            } else {
+                document.getElementById('errorList').style.display = 'none';
+            }
+            
+            if (importData.length > 0) {
+                document.getElementById('previewBody').innerHTML = importData.map(row => `
+                    <tr><td>${row.name}</td><td>${row.email}</td><td>${row.age || '-'}</td></tr>
+                `).join('');
+                document.getElementById('importPreview').style.display = 'block';
+            } else {
+                document.getElementById('importPreview').style.display = 'none';
+            }
+        }
+
+        function importUsers() {
+            if (importErrors.length > 0) {
+                showMessage(`存在 ${importErrors.length} 条错误，请修正后重试`, 'error');
+                return;
+            }
+            
+            if (importData.length === 0) {
+                showMessage('没有有效数据', 'warning');
+                return;
+            }
+            
+            let successCount = 0;
+            let failCount = 0;
+            
+            importData.forEach(data => {
+                if (users.some(u => u.email === data.email)) {
+                    failCount++;
+                } else {
+                    const newId = users.length > 0 ? Math.max(...users.map(u => u.id)) + 1 : 1;
+                    users.push({
+                        ...data,
+                        id: newId,
+                        created_at: new Date().toLocaleString()
+                    });
+                    successCount++;
+                }
+            });
+            
+            saveUsers();
+            showMessage(`导入完成：成功 ${successCount} 条，失败 ${failCount} 条`);
+            closeImportModal();
+            fetchUsers(1);
+        }
+
+        function refreshUsers() {
+            fetchUsers(currentPage);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadMockData();
+            fetchUsers(1);
+        });
+    </script>
+</body>
+</html>
