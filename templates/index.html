@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户管理系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        body {
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            border-bottom: 1px solid #e8e8e8;
+            background: #fff;
+        }
+        .header h1 {
+            font-size: 20px;
+            color: #333;
+        }
+        .actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: #1890ff;
+            color: #fff;
+        }
+        .btn-primary:hover {
+            background: #40a9ff;
+        }
+        .btn-success {
+            background: #52c41a;
+            color: #fff;
+        }
+        .btn-success:hover {
+            background: #73d13d;
+        }
+        .btn-danger {
+            background: #ff4d4f;
+            color: #fff;
+        }
+        .btn-danger:hover {
+            background: #ff7875;
+        }
+        .btn-default {
+            background: #fff;
+            color: #666;
+            border: 1px solid #d9d9d9;
+        }
+        .btn-default:hover {
+            background: #f5f5f5;
+        }
+        .table-wrapper {
+            padding: 20px;
+            overflow-x: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 800px;
+        }
+        th, td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid #e8e8e8;
+        }
+        th {
+            background: #fafafa;
+            font-weight: 600;
+            color: #666;
+        }
+        tr:hover {
+            background: #fafafa;
+        }
+        .actions-cell {
+            white-space: nowrap;
+        }
+        .btn-sm {
+            padding: 4px 10px;
+            font-size: 12px;
+        }
+        .btn-link {
+            background: none;
+            color: #1890ff;
+            padding: 4px 8px;
+        }
+        .btn-link:hover {
+            background: rgba(24, 144, 255, 0.1);
+        }
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            display: none;
+        }
+        .modal-overlay.show {
+            display: flex;
+        }
+        .modal {
+            background: #fff;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+            overflow: hidden;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            border-bottom: 1px solid #e8e8e8;
+        }
+        .modal-header h2 {
+            font-size: 16px;
+            color: #333;
+        }
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: #999;
+            padding: 0 8px;
+        }
+        .modal-body {
+            padding: 20px;
+        }
+        .form-group {
+            margin-bottom: 16px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 14px;
+            color: #333;
+        }
+        .form-control {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #d9d9d9;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .form-control:focus {
+            outline: none;
+            border-color: #1890ff;
+            box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+        }
+        .modal-footer {
+            padding: 16px 20px;
+            border-top: 1px solid #e8e8e8;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .pagination button {
+            padding: 6px 12px;
+            border: 1px solid #d9d9d9;
+            background: #fff;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .pagination button:hover:not(:disabled) {
+            background: #f5f5f5;
+        }
+        .pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .pagination span {
+            font-size: 14px;
+            color: #666;
+        }
+        .message {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 24px;
+            border-radius: 4px;
+            color: #fff;
+            font-size: 14px;
+            z-index: 2000;
+            display: none;
+        }
+        .message.success {
+            background: #52c41a;
+        }
+        .message.error {
+            background: #ff4d4f;
+        }
+        .message.warning {
+            background: #faad14;
+        }
+        .message.show {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        .checkbox-cell input {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+        .import-preview {
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+        .import-preview table {
+            min-width: 100%;
+            font-size: 12px;
+        }
+        .import-preview th, .import-preview td {
+            padding: 8px;
+        }
+        .error-list {
+            max-height: 150px;
+            overflow-y: auto;
+            color: #ff4d4f;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+        .error-list ul {
+            padding-left: 20px;
+        }
+        .file-input {
+            display: none;
+        }
+        .file-label {
+            display: inline-block;
+            padding: 8px 16px;
+            border: 1px dashed #d9d9d9;
+            border-radius: 4px;
+            cursor: pointer;
+            color: #666;
+        }
+        .file-label:hover {
+            border-color: #1890ff;
+            color: #1890ff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>用户管理系统</h1>
+            <div class="actions">
+                <button class="btn btn-default" onclick="refreshUsers()">刷新</button>
+                <button class="btn btn-default" onclick="downloadTemplate()">下载模板</button>
+                <button class="btn btn-success" onclick="exportUsers()">导出 CSV</button>
+                <button class="btn btn-default" onclick="showImportModal()">导入 CSV</button>
+                <button class="btn btn-primary" onclick="showAddModal()">+ 添加用户</button>
+                <button class="btn btn-danger" onclick="batchDeleteUsers()" id="batchDeleteBtn" style="display:none;">
+                    批量删除 (<span id="selectedCount">0</span>)
+                </button>
+            </div>
+        </div>
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width:40px;">
+                            <input type="checkbox" id="selectAll" onclick="toggleSelectAll()">
+                        </th>
+                        <th>ID</th>
+                        <th>姓名</th>
+                        <th>邮箱</th>
+                        <th>年龄</th>
+                        <th>创建时间</th>
+                        <th style="width:120px;">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="userTableBody">
+                </tbody>
+            </table>
+            <div class="pagination" id="pagination">
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="userModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="modalTitle">添加用户</h2>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="userForm">
+                    <input type="hidden" id="userId">
+                    <div class="form-group">
+                        <label>姓名 *</label>
+                        <input type="text" class="form-control" id="userName" required>
+                    </div>
+                    <div class="form-group">
+                        <label>邮箱 *</label>
+                        <input type="email" class="form-control" id="userEmail" required>
+                    </div>
+                    <div class="form-group">
+                        <label>年龄</label>
+                        <input type="number" class="form-control" id="userAge" min="0" max="150">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-default" onclick="closeModal()">取消</button>
+                <button class="btn btn-primary" onclick="saveUser()">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="importModal">
+        <div class="modal" style="max-width:700px;">
+            <div class="modal-header">
+                <h2>导入用户</h2>
+                <button class="modal-close" onclick="closeImportModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <label class="file-label" for="importFile">点击上传 CSV 文件</label>
+                <input type="file" id="importFile" class="file-input" accept=".csv" onchange="handleFileChange()">
+                <div id="fileInfo" style="margin-top:10px;color:#666;"></div>
+                
+                <div class="import-preview" id="importPreview" style="display:none;">
+                    <p style="margin-bottom:10px;font-weight:bold;">预览数据：</p>
+                    <table>
+                        <thead>
+                            <tr><th>姓名</th><th>邮箱</th><th>年龄</th></tr>
+                        </thead>
+                        <tbody id="previewBody"></tbody>
+                    </table>
+                </div>
+                
+                <div class="error-list" id="errorList" style="display:none;">
+                    <p style="margin-bottom:10px;font-weight:bold;">数据校验错误：</p>
+                    <ul id="errors"></ul>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-default" onclick="downloadTemplate()">下载模板</button>
+                <button class="btn btn-default" onclick="closeImportModal()">取消</button>
+                <button class="btn btn-primary" onclick="importUsers()">确认导入</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="message" id="message"></div>
+
+    <script>
+        let currentPage = 1;
+        let pageSize = 10;
+        let total = 0;
+        let selectedIds = [];
+
+        async function fetchUsers(page = 1, limit = 10) {
+            try {
+                const response = await fetch(`/api/users?page=${page}&limit=${limit}`);
+                const result = await response.json();
+                if (result.success) {
+                    renderUsers(result.data.list);
+                    currentPage = result.data.page;
+                    pageSize = result.data.limit;
+                    total = result.data.total;
+                    renderPagination();
+                }
+            } catch (error) {
+                showMessage('获取用户列表失败', 'error');
+            }
+        }
+
+        function renderUsers(users) {
+            const tbody = document.getElementById('userTableBody');
+            if (users.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-state">暂无用户数据</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = users.map(user => `
+                <tr>
+                    <td class="checkbox-cell"><input type="checkbox" data-id="${user.id}" ${selectedIds.includes(user.id) ? 'checked' : ''} onclick="toggleSelect(${user.id})"></td>
+                    <td>${user.id}</td>
+                    <td>${user.name}</td>
+                    <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${user.email}</td>
+                    <td>${user.age || '-'}</td>
+                    <td>${formatDate(user.created_at)}</td>
+                    <td class="actions-cell">
+                        <button class="btn btn-link btn-sm" onclick="showEditModal(${user.id})">编辑</button>
+                        <button class="btn btn-link btn-sm" style="color:#ff4d4f;" onclick="deleteUser(${user.id})">删除</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function renderPagination() {
+            const pagination = document.getElementById('pagination');
+            const pages = Math.ceil(total / pageSize);
+            
+            if (pages <= 1) {
+                pagination.innerHTML = '';
+                return;
+            }
+            
+            pagination.innerHTML = `
+                <button onclick="fetchUsers(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>上一页</button>
+                <span>${currentPage} / ${pages}</span>
+                <button onclick="fetchUsers(${currentPage + 1})" ${currentPage === pages ? 'disabled' : ''}>下一页</button>
+            `;
+        }
+
+        function formatDate(dateStr) {
+            return new Date(dateStr).toLocaleString('zh-CN');
+        }
+
+        function showMessage(text, type = 'success') {
+            const message = document.getElementById('message');
+            message.textContent = text;
+            message.className = `message ${type} show`;
+            setTimeout(() => {
+                message.classList.remove('show');
+            }, 3000);
+        }
+
+        function showAddModal() {
+            document.getElementById('modalTitle').textContent = '添加用户';
+            document.getElementById('userId').value = '';
+            document.getElementById('userName').value = '';
+            document.getElementById('userEmail').value = '';
+            document.getElementById('userAge').value = '';
+            document.getElementById('userModal').classList.add('show');
+        }
+
+        function showEditModal(id) {
+            fetch(`/api/users/${id}`)
+                .then(res => res.json())
+                .then(result => {
+                    if (result.success) {
+                        document.getElementById('modalTitle').textContent = '编辑用户';
+                        document.getElementById('userId').value = result.data.id;
+                        document.getElementById('userName').value = result.data.name;
+                        document.getElementById('userEmail').value = result.data.email;
+                        document.getElementById('userAge').value = result.data.age || '';
+                        document.getElementById('userModal').classList.add('show');
+                    }
+                });
+        }
+
+        function closeModal() {
+            document.getElementById('userModal').classList.remove('show');
+        }
+
+        async function saveUser() {
+            const id = document.getElementById('userId').value;
+            const data = {
+                name: document.getElementById('userName').value,
+                email: document.getElementById('userEmail').value,
+                age: document.getElementById('userAge').value || null
+            };
+
+            if (!data.name || !data.email) {
+                showMessage('姓名和邮箱不能为空', 'warning');
+                return;
+            }
+
+            try {
+                const url = id ? `/api/users/${id}` : '/api/users';
+                const method = id ? 'PUT' : 'POST';
+                const response = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    showMessage(result.message);
+                    closeModal();
+                    fetchUsers(currentPage, pageSize);
+                } else {
+                    showMessage(result.message, 'error');
+                }
+            } catch (error) {
+                showMessage('操作失败', 'error');
+            }
+        }
+
+        async function deleteUser(id) {
+            if (!confirm('确定删除该用户？')) return;
+            
+            try {
+                const response = await fetch(`/api/users/${id}`, { method: 'DELETE' });
+                const result = await response.json();
+                
+                if (result.success) {
+                    showMessage(result.message);
+                    fetchUsers(currentPage, pageSize);
+                } else {
+                    showMessage(result.message, 'error');
+                }
+            } catch (error) {
+                showMessage('删除失败', 'error');
+            }
+        }
+
+        function toggleSelect(id) {
+            const index = selectedIds.indexOf(id);
+            if (index > -1) {
+                selectedIds.splice(index, 1);
+            } else {
+                selectedIds.push(id);
+            }
+            updateBatchButton();
+        }
+
+        function toggleSelectAll() {
+            const checkbox = document.getElementById('selectAll');
+            const checkboxes = document.querySelectorAll('.checkbox-cell input');
+            
+            if (checkbox.checked) {
+                checkboxes.forEach(cb => {
+                    cb.checked = true;
+                    const id = parseInt(cb.dataset.id);
+                    if (!selectedIds.includes(id)) {
+                        selectedIds.push(id);
+                    }
+                });
+            } else {
+                checkboxes.forEach(cb => cb.checked = false);
+                selectedIds = [];
+            }
+            updateBatchButton();
+        }
+
+        function updateBatchButton() {
+            const btn = document.getElementById('batchDeleteBtn');
+            const count = document.getElementById('selectedCount');
+            
+            if (selectedIds.length > 0) {
+                btn.style.display = 'inline-block';
+                count.textContent = selectedIds.length;
+            } else {
+                btn.style.display = 'none';
+            }
+        }
+
+        async function batchDeleteUsers() {
+            if (!confirm(`确定删除选中的 ${selectedIds.length} 个用户？`)) return;
+            
+            try {
+                const response = await fetch('/api/users/batch', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ids: selectedIds })
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    showMessage(result.message);
+                    selectedIds = [];
+                    updateBatchButton();
+                    document.getElementById('selectAll').checked = false;
+                    fetchUsers(currentPage, pageSize);
+                } else {
+                    showMessage(result.message, 'error');
+                }
+            } catch (error) {
+                showMessage('批量删除失败', 'error');
+            }
+        }
+
+        async function exportUsers() {
+            try {
+                const response = await fetch('/api/users/export');
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `用户列表_${new Date().toLocaleDateString()}.csv`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                showMessage('导出成功');
+            } catch (error) {
+                showMessage('导出失败', 'error');
+            }
+        }
+
+        async function downloadTemplate() {
+            try {
+                const response = await fetch('/api/users/template');
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = '用户导入模板.csv';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                showMessage('模板下载成功');
+            } catch (error) {
+                showMessage('模板下载失败', 'error');
+            }
+        }
+
+        function showImportModal() {
+            document.getElementById('importFile').value = '';
+            document.getElementById('fileInfo').textContent = '';
+            document.getElementById('importPreview').style.display = 'none';
+            document.getElementById('errorList').style.display = 'none';
+            document.getElementById('previewBody').innerHTML = '';
+            document.getElementById('errors').innerHTML = '';
+            document.getElementById('importModal').classList.add('show');
+        }
+
+        function closeImportModal() {
+            document.getElementById('importModal').classList.remove('show');
+        }
+
+        function handleFileChange() {
+            const file = document.getElementById('importFile').files[0];
+            if (!file) return;
+            
+            document.getElementById('fileInfo').textContent = `已选择文件: ${file.name}`;
+            parseCSV(file);
+        }
+
+        function parseCSV(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const content = e.target.result;
+                const lines = content.split('\n').filter(line => line.trim());
+                if (lines.length <= 1) {
+                    showMessage('文件内容为空', 'warning');
+                    return;
+                }
+                
+                const headers = lines[0].split(',');
+                if (!headers.includes('姓名') || !headers.includes('邮箱')) {
+                    showMessage('文件格式不正确，请使用正确的模板', 'warning');
+                    return;
+                }
+                
+                const data = [];
+                const errors = [];
+                
+                for (let i = 1; i < lines.length; i++) {
+                    const parts = lines[i].split(',');
+                    const row_num = i + 1;
+                    const row = { name: '', email: '', age: '' };
+                    
+                    headers.forEach((header, idx) => {
+                        if (header.includes('姓名')) row.name = parts[idx] || '';
+                        if (header.includes('邮箱')) row.email = parts[idx] || '';
+                        if (header.includes('年龄')) row.age = parts[idx] || '';
+                    });
+                    
+                    if (!row.name.trim()) {
+                        errors.push(`第${row_num}行：姓名为空`);
+                    } else if (!row.email.trim() || !row.email.includes('@')) {
+                        errors.push(`第${row_num}行：邮箱格式错误`);
+                    } else if (row.age && (isNaN(parseInt(row.age)) || parseInt(row.age) < 0 || parseInt(row.age) > 150)) {
+                        errors.push(`第${row_num}行：年龄必须为 0-150 的数字`);
+                    } else {
+                        data.push(row);
+                    }
+                }
+                
+                if (errors.length > 0) {
+                    document.getElementById('errors').innerHTML = errors.map(e => `<li>${e}</li>`).join('');
+                    document.getElementById('errorList').style.display = 'block';
+                } else {
+                    document.getElementById('errorList').style.display = 'none';
+                }
+                
+                if (data.length > 0) {
+                    document.getElementById('previewBody').innerHTML = data.map(row => `
+                        <tr><td>${row.name}</td><td>${row.email}</td><td>${row.age || '-'}</td></tr>
+                    `).join('');
+                    document.getElementById('importPreview').style.display = 'block';
+                } else {
+                    document.getElementById('importPreview').style.display = 'none';
+                }
+            };
+            reader.readAsText(file, 'utf-8');
+        }
+
+        async function importUsers() {
+            const file = document.getElementById('importFile').files[0];
+            if (!file) {
+                showMessage('请先选择文件', 'warning');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            try {
+                const response = await fetch('/api/users/import', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    showMessage(result.message);
+                    closeImportModal();
+                    fetchUsers(1, pageSize);
+                } else {
+                    showMessage(result.message, 'error');
+                }
+            } catch (error) {
+                showMessage('导入失败', 'error');
+            }
+        }
+
+        function refreshUsers() {
+            fetchUsers(currentPage, pageSize);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchUsers();
+        });
+    </script>
+</body>
+</html>
